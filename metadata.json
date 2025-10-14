@@ -1,0 +1,5 @@
+{
+  "name": "Expertise Analyzer",
+  "description": "An interactive workbook generator that creates progressively challenging problems on any user-submitted topic to test and build expertise.",
+  "requestFramePermissions": []
+}
