@@ -23,3 +23,4 @@ This project is built with a modern, efficient technology stack:
 You can try out the live version of the Expertise Analyzer here:
 
 https://expertise-analyzer-89795080659.us-west1.run.app
+https://expertise-analyzer-89795080659.us-west1.run.app

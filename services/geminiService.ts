@@ -93,25 +93,30 @@ export const analyzeAnswer = async (
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
   const prompt = `
-    You are an expert in the field of "${topic}". 
+    You are an expert in the field of "${topic}".
     A user is working through a problem set to test their knowledge.
-    
-    The user was presented with the following problem:
-    Question: "${question}"
 
-    For your reference, the ideal solution is:
-    Solution: "${solution}"
+    **Problem Details:**
+    - **Question:** "${question}"
+    - **Ideal Solution:** "${solution}"
 
-    The user submitted the following answer:
-    User's Answer: "${userAnswer}"
+    **User's Submission:**
+    - **User's Answer:** "${userAnswer}"
 
-    Your task is to provide a critical yet constructive analysis of the user's answer.
-    - Evaluate its correctness and completeness.
-    - Identify any specific misconceptions or errors.
-    - Highlight what the user did well and understood correctly.
-    - Provide clear, actionable suggestions for improvement.
-    - Keep the tone encouraging and helpful. Address the user directly.
-    - Do not just state if it's right or wrong, provide a thoughtful explanation.
+    **Your Task:**
+    Provide a succinct, critical analysis of the user's answer. Structure your feedback using the following markdown format *exactly*. Do not use conversational text before or after this structure.
+
+    **Strengths:**
+    - [List the key correct points and concepts the user demonstrated in a bulleted list.]
+
+    **Areas for Improvement:**
+    - [List the key weaknesses, missing details, or misconceptions in a bulleted list.]
+
+    **Alignment Summary:**
+    [Provide a short, one-sentence summary of how well the user's solution aligns with the ideal solution.]
+
+    **Competency Focus (if applicable):**
+    [If the user's answer is significantly incorrect, identify the core competency they seem to be missing and suggest they review it. Example: "It appears there's a misunderstanding of core concept X. It would be beneficial to review this topic." If the answer is mostly correct, omit this section or write "N/A".]
   `;
 
   try {
