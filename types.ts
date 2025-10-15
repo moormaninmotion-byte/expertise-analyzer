@@ -1,14 +1,11 @@
-
-export interface Problem {
-  level: number;
-  title: string;
-  description: string;
+// Fix: Defining the data structures for the application.
+export type Problem = {
+  level: 'Beginner' | 'Intermediate' | 'Expert';
   question: string;
   solution: string;
-  hint: string;
-}
+};
 
-export interface Workbook {
+export type Workbook = {
   topic: string;
   problems: Problem[];
-}
+};

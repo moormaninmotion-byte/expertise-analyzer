@@ -1,82 +1,70 @@
+// Fix: Implementing the Gemini API service to generate a workbook.
 import { GoogleGenAI, Type } from "@google/genai";
 import { Workbook } from '../types';
 
-const WORKBOOK_SCHEMA = {
-  type: Type.OBJECT,
-  properties: {
-    topic: { 
-      type: Type.STRING,
-      description: 'The topic of the workbook.'
-    },
-    problems: {
-      type: Type.ARRAY,
-      description: 'A list of 5 problems with increasing difficulty.',
-      items: {
-        type: Type.OBJECT,
-        properties: {
-          level: { 
-            type: Type.INTEGER, 
-            description: "Difficulty level, from 1 (beginner) to 5 (expert)." 
-          },
-          title: { 
-            type: Type.STRING, 
-            description: "A short, engaging title for the problem, related to the concept being tested." 
-          },
-          description: { 
-            type: Type.STRING, 
-            description: "A brief one-sentence explanation of the concept being tested at this level." 
-          },
-          question: { 
-            type: Type.STRING, 
-            description: "The specific question, task, or problem for the user to solve." 
-          },
-          solution: { 
-            type: Type.STRING, 
-            description: "A detailed, correct solution to the problem." 
-          },
-          hint: { 
-            type: Type.STRING, 
-            description: "A helpful hint if the user gets stuck, guiding them towards the solution without giving it away." 
-          },
-        },
-        required: ['level', 'title', 'description', 'question', 'solution', 'hint']
-      }
-    }
-  },
-  required: ['topic', 'problems']
-};
-
+// The API key must be obtained exclusively from the environment variable `process.env.API_KEY`.
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
 
 export const generateWorkbook = async (topic: string): Promise<Workbook> => {
-  if (!process.env.API_KEY) {
-    throw new Error("API_KEY environment variable not set");
-  }
+  // Use gemini-2.5-flash for basic text tasks.
+  const model = 'gemini-2.5-flash';
 
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const prompt = `Create an expertise workbook for the topic: "${topic}".
+The workbook should contain exactly 3 problems: one "Beginner", one "Intermediate", and one "Expert" level.
+Each problem must include a detailed question and a comprehensive solution.
+The solution should not just give the answer, but also explain the reasoning behind it.
 
-  const prompt = `Generate an interactive workbook with exactly 5 problems to analyze a user's expertise on the topic: "${topic}". The problems must require progressively increasing expertise to solve, starting from a beginner level (1) and going up to an expert level (5). Each problem must be distinct and test a different aspect or a more advanced concept of the topic.`;
+To ensure a comprehensive test, please generate a DIVERSE set of problems. For example, include a mix of the following types:
+- A definition-based question (e.g., "What is...? Explain the core concept.")
+- An application-based question (e.g., "How would you use X to solve Y? Provide a code sample or practical steps.")
+- A debugging or troubleshooting question (e.g., "This code/scenario is broken. Identify the problem and explain how to fix it.")
+
+For the topic "${topic}", generate these three problems and ensure the topic in the response matches the requested topic exactly.
+`;
+
+  const responseSchema = {
+    type: Type.OBJECT,
+    properties: {
+      topic: { type: Type.STRING },
+      problems: {
+        type: Type.ARRAY,
+        items: {
+          type: Type.OBJECT,
+          properties: {
+            level: { type: Type.STRING, enum: ['Beginner', 'Intermediate', 'Expert'] },
+            question: { type: Type.STRING },
+            solution: { type: Type.STRING },
+          },
+          required: ['level', 'question', 'solution'],
+        },
+      },
+    },
+    required: ['topic', 'problems'],
+  };
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model,
       contents: prompt,
       config: {
         responseMimeType: "application/json",
-        responseSchema: WORKBOOK_SCHEMA,
-        temperature: 0.7,
+        responseSchema,
       },
     });
 
-    const jsonText = response.text.trim();
-    const workbookData = JSON.parse(jsonText) as Workbook;
-    
-    // Sort problems by level just in case the model returns them out of order
-    workbookData.problems.sort((a, b) => a.level - b.level);
-    
-    return workbookData;
+    const text = response.text;
+    const workbookData = JSON.parse(text);
+
+    // Basic validation to ensure the API returned a valid structure.
+    if (!workbookData.topic || !Array.isArray(workbookData.problems) || workbookData.problems.length === 0) {
+      throw new Error('Invalid workbook structure received from API.');
+    }
+
+    return workbookData as Workbook;
   } catch (error) {
     console.error("Error generating workbook:", error);
-    throw new Error("Failed to generate the workbook. The topic might be too broad or the API is unavailable.");
+    // Provide a user-friendly error message.
+    throw new Error("Failed to generate the workbook. Please check your API key and try again.");
   }
 };
 
@@ -86,51 +74,45 @@ export const analyzeAnswer = async (
   solution: string,
   userAnswer: string
 ): Promise<string> => {
-  if (!process.env.API_KEY) {
-    throw new Error("API_KEY environment variable not set");
-  }
-
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const model = 'gemini-2.5-flash';
 
   const prompt = `
-    You are an expert in the field of "${topic}".
-    A user is working through a problem set to test their knowledge.
+    As an expert in "${topic}", provide a succinct, critical analysis of the following user's answer to a problem.
 
-    **Problem Details:**
-    - **Question:** "${question}"
-    - **Ideal Solution:** "${solution}"
+    **The Problem:**
+    ${question}
 
-    **User's Submission:**
-    - **User's Answer:** "${userAnswer}"
+    **The Ideal Solution:**
+    ${solution}
 
-    **Your Task:**
-    Provide a succinct, critical analysis of the user's answer. Structure your feedback using the following markdown format *exactly*. Do not use conversational text before or after this structure.
+    **The User's Submitted Answer:**
+    ${userAnswer}
 
-    **Strengths:**
-    - [List the key correct points and concepts the user demonstrated in a bulleted list.]
+    ---
+
+    Please structure your feedback in the following format, using markdown for lists and bolding:
+
+    **Key Strengths:**
+    - List the key concepts or solutions the user correctly identified.
 
     **Areas for Improvement:**
-    - [List the key weaknesses, missing details, or misconceptions in a bulleted list.]
+    - List the key weaknesses, inaccuracies, or missing details in the user's answer.
 
-    **Alignment Summary:**
-    [Provide a short, one-sentence summary of how well the user's solution aligns with the ideal solution.]
+    **Alignment with Optimal Solution:**
+    - Provide a short summary (1-2 sentences) of how well the user's solution aligns with the ideal solution.
 
     **Competency Focus (if applicable):**
-    [If the user's answer is significantly incorrect, identify the core competency they seem to be missing and suggest they review it. Example: "It appears there's a misunderstanding of core concept X. It would be beneficial to review this topic." If the answer is mostly correct, omit this section or write "N/A".]
+    - If the user's solution is fundamentally incorrect or misses the core concept, identify the key competency they seem to be lacking. Politely advise them to review this specific area within "${topic}". If the answer is reasonably good, omit this section.
   `;
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model,
       contents: prompt,
-      config: {
-        temperature: 0.5,
-      },
     });
-
-    return response.text.trim();
+    return response.text;
   } catch (error) {
     console.error("Error analyzing answer:", error);
-    throw new Error("Failed to get analysis from the expert. Please try again.");
+    throw new Error("Failed to get expert analysis. The service may be temporarily unavailable.");
   }
 };
