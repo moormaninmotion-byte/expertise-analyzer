@@ -4,6 +4,8 @@ import { Problem } from '../types';
 import { LightbulbIcon } from './icons/LightbulbIcon';
 import { BriefcaseIcon } from './icons/BriefcaseIcon';
 import { SparklesIcon } from './icons/SparklesIcon';
+import { ThumbsUpIcon } from './icons/ThumbsUpIcon';
+import { ThumbsDownIcon } from './icons/ThumbsDownIcon';
 import { analyzeAnswer } from '../services/geminiService';
 
 interface ProblemCardProps {
@@ -50,6 +52,7 @@ export const ProblemCard: React.FC<ProblemCardProps> = ({ problem, topic }) => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
   const [loadingMessage, setLoadingMessage] = useState(funnyLoadingMessages[0]);
+  const [feedbackGiven, setFeedbackGiven] = useState<'yes' | 'no' | null>(null);
   const intervalRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -104,7 +107,6 @@ export const ProblemCard: React.FC<ProblemCardProps> = ({ problem, topic }) => {
       .replace(/\n/g, '<br />');
   };
 
-  // FIX: Define the 'config' variable by accessing the 'levelConfig' object with the current problem's level.
   const config = levelConfig[problem.level];
 
   return (
@@ -193,6 +195,37 @@ export const ProblemCard: React.FC<ProblemCardProps> = ({ problem, topic }) => {
             </div>
           )}
         </div>
+        
+        <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
+          {feedbackGiven ? (
+            <p className="text-center text-gray-500 dark:text-gray-400 font-medium">
+              Thank you for your feedback!
+            </p>
+          ) : (
+            <div className="flex items-center justify-center gap-4">
+              <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Was this problem helpful?
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setFeedbackGiven('yes')}
+                  className="inline-flex items-center justify-center h-10 w-10 rounded-full bg-gray-100 hover:bg-green-100 dark:bg-gray-700 dark:hover:bg-green-900/50 text-gray-500 hover:text-green-600 dark:text-gray-400 dark:hover:text-green-400 transition-colors"
+                  aria-label="Helpful"
+                >
+                  <ThumbsUpIcon className="h-5 w-5" />
+                </button>
+                <button
+                  onClick={() => setFeedbackGiven('no')}
+                  className="inline-flex items-center justify-center h-10 w-10 rounded-full bg-gray-100 hover:bg-red-100 dark:bg-gray-700 dark:hover:bg-red-900/50 text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400 transition-colors"
+                  aria-label="Not helpful"
+                >
+                  <ThumbsDownIcon className="h-5 w-5" />
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
       </div>
     </div>
   );
